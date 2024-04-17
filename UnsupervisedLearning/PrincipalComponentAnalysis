@@ -1,0 +1,128 @@
+#################################
+# Coding Work3: PCA Implementation
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_wine
+
+class PCA:
+    def __init__(self, n_components):
+        """
+        Initialize PCA object.
+
+        Parameters:
+        - n_components (int): Number of principal components to keep.
+
+        Returns:
+        - None
+        """
+        self.n_components = n_components
+        self.components = None
+        self.avergae = None
+        self.stddev = None
+
+    def fit_transform(self, X): #### Implement this function, this function worth 20 points ####
+        """
+        Fit PCA to the data and transform it into the principal components.
+
+        Parameters:
+        - X (array-like): Input data.
+
+        Returns:
+        - X_pca (array-like): Transformed data in the principal component space.
+        """
+        #standardisation
+        self.stddev = np.std(X,axis = 0)
+        self.average = np.mean(X,axis = 0) 
+        
+        X = (X - self.average)/self.stddev
+        
+        ###covariance to find the an orthogonal axis that maximizes the datapoint projection onto the axis 
+        covar = np.cov(X.T)
+        
+        #eigenvectors, eigenvalues
+        eigenval, eigenvect = np.linalg.eig(covar) 
+        
+        #sort eigenvectors
+        eigenvect = eigenvect.T
+        indexes = np.argsort(eigenval)[::-1]
+        eigenval = eigenval[indexes]
+        eigenvect = eigenvect[indexes]
+        
+        #store first n eigenvectors
+        self.components = eigenvect[0:self.n_components]
+        
+        #transform
+        X = X-self.average
+        return np.dot(X, self.components.T)
+        
+    def visualize_features_vs_components(self, X, X_std, X_pca):
+        """
+        Visualize original features vs principal components.
+
+        Parameters:
+        - X (array-like): Original input data.
+        - X_std (array-like): Standardized input data.
+        - X_pca (array-like): Transformed data in the principal component space.
+
+        Returns:
+        - None
+        """
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
+
+        # Plot original features
+        for i in range(X.shape[1]):
+            axes[0].scatter(np.arange(X.shape[0]), X_std[:, i], label=f'Feature {i+1}')
+
+        # Plot principal components
+        for i in range(X_pca.shape[1]):
+            axes[1].scatter(np.arange(X.shape[0]), X_pca[:, i], label=f'PC {i+1}')
+
+        axes[0].set_title('Original Features')
+        axes[1].set_title('Principal Components')
+        axes[0].set_xlabel('Sample Index')
+        axes[1].set_xlabel('Sample Index')
+        axes[0].set_ylabel('Standardized Value')
+        axes[1].set_ylabel('Transformed Value')
+        axes[0].legend()
+        axes[1].legend()
+        plt.tight_layout()
+        plt.show()
+
+    def plot_explained_variance_vs_components(self, X): #### Implement this function, this function worth 10 points ####
+        """
+        Plot explained variance ratio versus number of components.
+
+        Parameters:
+        - X (array-like): Input data.
+
+        Returns:
+        - None
+        """
+        covar = np.cov(X.T)
+        eigenval, eigenvect = np.linalg.eig(covar)
+        explained_variance_ratio = eigenval / np.sum(eigenval)
+        cumulative_variance_ratio = np.cumsum(explained_variance_ratio)
+        plt.plot(np.arange(1, len(cumulative_variance_ratio) + 1), cumulative_variance_ratio, marker='o')
+        plt.title('Explained Variance Ratio vs. Number of Components')
+        plt.xlabel('Number of Components')
+        plt.ylabel('Cumulative Explained Variance Ratio')
+        plt.grid(True)
+        plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    # Load Wine dataset
+    wine = load_wine()
+    X = wine.data
+
+    # Perform PCA
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X)
+    
+    # Print shapes of original and transformed data
+    print("Original Shape:", X.shape)
+    print("Transformed Shape:", X_pca.shape)
+
+    # Plot explained variance ratio versus number of components
+    pca.plot_explained_variance_vs_components(X)
+    pca.visualize_features_vs_components(X, (X - np.mean(X,axis = 0))/np.std(X,axis = 0), X_pca)
