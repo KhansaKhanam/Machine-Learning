@@ -1,0 +1,123 @@
+#################################
+# Coding Work4: NaiveBayes Implementation
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_wine
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from matplotlib.colors import ListedColormap
+
+class NaiveBayes:
+    def fit(self, X, y): 
+        n_samples, n_features = X.shape
+        self._classes = np.unique(y)
+        n_classes = len(self._classes)
+        # Calculate mean, variance, and prior for each class
+        self._mean = np.zeros((n_classes, n_features), dtype=np.float64)
+        self._var = np.zeros((n_classes, n_features), dtype=np.float64)
+        self._priors = np.zeros(n_classes, dtype=np.float64)
+
+        for index, c in enumerate(self._classes):
+            X_c = X[y == c]
+            self._mean[index, :] = X_c.mean(axis=0)
+            self._var[index, :] = X_c.var(axis=0)
+            self._priors[index] = X_c.shape[0] / float(n_samples)
+
+    def predict(self, X):
+        y_pred = [self._predict(x) for x in X]
+        return np.array(y_pred)
+
+    def _predict(self, X):
+        posteriors = []
+
+        # Calculate posterior probabilities
+        for index, c in enumerate(self._classes):
+            prior = np.log(self._priors[index])
+            posterior = np.sum(np.log(self._pdf(index, X)))
+            posterior = posterior + prior
+            posteriors.append(posterior)
+
+        return self._classes[np.argmax(posteriors)]
+
+    def _pdf(self, index, X):
+        mean = self._mean[index]
+        std = self._var[index]
+        numerator = np.exp(-(X - mean) ** 2 / (2 * std ** 2))
+        denominator = np.sqrt(2 * np.pi * std ** 2)
+        return numerator / denominator
+
+def plot_decision_boundary(X, y, classifier, title):
+    """
+    Plot the decision boundary of a classifier along with the data points.
+
+    Parameters:
+    - X (array-like): Input data.
+    - y (array-like): Target labels.
+    - classifier: Trained classifier object with a predict method.
+    - title (str): Title of the plot.
+
+    Returns:
+    - None
+    """
+    cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+    cmap_bold = ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
+
+    # Determine plot limits
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+
+    # Generate mesh grid
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02),
+                         np.arange(y_min, y_max, 0.02))
+
+    # Predict class labels for each point in the mesh grid
+    Z = classifier.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    # Plot decision boundary
+    plt.figure()
+    plt.pcolormesh(xx, yy, Z, cmap=cmap_light)
+
+    # Plot data points
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=cmap_bold,
+                edgecolor='k', s=20)
+    
+    # Set plot limits
+    plt.xlim(xx.min(), xx.max())
+    plt.ylim(yy.min(), yy.max())
+
+    # Set plot title and labels
+    plt.title(title)
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    
+    # Show plot
+    plt.show()
+
+
+def main():
+    # Load the Wine dataset
+    wine = load_wine()
+    X = wine.data[:, :2]  # Use only the first two features for visualization
+    y = wine.target
+
+    # Split the dataset into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Create and fit the Naive Bayes classifier
+    nb_classifier = NaiveBayes()
+    nb_classifier.fit(X_train, y_train)
+
+    # Predict
+    y_pred = nb_classifier.predict(X_test)
+
+    # Compute accuracy
+    accuracy = accuracy_score(y_test, y_pred)
+    print("Accuracy of Naive Bayes classifier:", accuracy)
+
+    # Plot decision boundary
+    plot_decision_boundary(X_train, y_train, nb_classifier, 'Naive Bayes Decision Boundary (Training Set)')
+
+if __name__ == "__main__":
+    main()
